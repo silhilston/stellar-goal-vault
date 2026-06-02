@@ -1,22 +1,14 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { CampaignDetailPanel } from "./components/CampaignDetailPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { FundedConfetti } from "./components/FundedConfetti";
 import { KeyboardShortcutsOverlay } from "./components/KeyboardShortcutsOverlay";
 import { CampaignsTable } from "./components/CampaignsTable";
 import { CampaignTimeline } from "./components/CampaignTimeline";
 import { CreateCampaignForm } from "./components/CreateCampaignForm";
+import { CreatorAnalytics } from "./components/CreatorAnalytics";
 import { IssueBacklog } from "./components/IssueBacklog";
-
-const CampaignDetailPanel = lazy(() =>
-  import("./components/CampaignDetailPanel").then((mod) => ({
-    default: mod.CampaignDetailPanel,
-  })),
-);
-const CreatorAnalytics = lazy(() =>
-  import("./components/CreatorAnalytics").then((mod) => ({
-    default: mod.CreatorAnalytics,
-  })),
-);
 import {
   TransactionPreviewModal,
   TransactionPreviewData,
@@ -57,6 +49,7 @@ const DEFAULT_NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
 const THEME_STORAGE_KEY = "stellar-goal-vault-theme";
 const SORT_ORDER_KEY = "stellar-goal-vault-sort-order";
 const FILTER_STATE_KEY = "stellar-goal-vault-filter-state";
+const SCROLL_KEY = "sgv-list-scroll";
 
 type ThemeMode = "light" | "dark";
 
@@ -70,42 +63,8 @@ type ConfettiBurst = {
   campaignTitle: string;
 };
 
-function useOnlineStatus(): boolean {
-  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  return isOnline;
-}
-
 function round(value: number): number {
   return Number(value.toFixed(2));
-}
-
-function getCampaignIdFromUrl(): string | null {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("campaign");
-}
-
-function setCampaignIdInUrl(campaignId: string | null): void {
-  const url = new URL(window.location.href);
-  if (campaignId) {
-    url.searchParams.set("campaign", campaignId);
-  } else {
-    url.searchParams.delete("campaign");
-  }
-  window.history.replaceState(null, "", url.toString());
 }
 
 function getErrorMessage(error: unknown): string {
@@ -146,18 +105,17 @@ function getSystemTheme(): ThemeMode {
 }
 
 function App() {
+  const { id: paramId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const freighter = useFreighter();
   const { toasts, addToast, dismiss } = useToast();
   const connectedWallet = freighter.publicKey;
-  const isOnline = useOnlineStatus();
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [issues, setIssues] = useState<OpenIssue[]>([]);
   const [history, setHistory] = useState<CampaignEvent[]>([]);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(() =>
-    getCampaignIdFromUrl(),
-  );
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(paramId ?? null);
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<Campaign | null>(
     null,
   );
@@ -193,8 +151,15 @@ function App() {
   }, [themeMode]);
 
   useEffect(() => {
-    setCampaignIdInUrl(selectedCampaignId);
-  }, [selectedCampaignId]);
+    setSelectedCampaignId(paramId ?? null);
+    if (!paramId) {
+      const saved = sessionStorage.getItem(SCROLL_KEY);
+      if (saved !== null) {
+        window.scrollTo(0, parseInt(saved, 10));
+        sessionStorage.removeItem(SCROLL_KEY);
+      }
+    }
+  }, [paramId]);
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
@@ -272,11 +237,13 @@ function App() {
     await Promise.all([refreshHistory(campaignId), refreshSelectedCampaign(campaignId)]);
   }
 
+  const initialParamIdRef = useRef(paramId);
+
   useEffect(() => {
     let cancelled = false;
 
     async function bootstrap() {
-      const requestedCampaignId = getCampaignIdFromUrl();
+      const requestedCampaignId = initialParamIdRef.current ?? null;
       setInitialLoad(true);
 
       const [configResult, issuesResult, campaignsResult] = await Promise.allSettled([
@@ -307,6 +274,9 @@ function App() {
         const exists = nextId ? data.some((campaign) => campaign.id === nextId) : false;
         const resolvedId = exists ? nextId : data[0]?.id ?? null;
 
+        if (requestedCampaignId && !exists) {
+          navigate('/not-found', { replace: true });
+        }
         setInvalidUrlCampaignId(requestedCampaignId && !exists ? requestedCampaignId : null);
         setSelectedCampaignId(resolvedId);
       } else {
@@ -321,7 +291,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [addToast]);
+  }, [addToast, navigate]);
 
   useEffect(() => {
     void refreshSelectedData(selectedCampaignId).catch((error) => {
@@ -370,6 +340,7 @@ function App() {
       const campaign = await createCampaign(payload);
       await refreshCampaigns(campaign.id);
       await refreshSelectedData(campaign.id);
+      navigate('/campaigns/' + campaign.id);
       addToast(`Campaign #${campaign.id} is live and ready for pledges.`, "success");
     } catch (error) {
       setCreateError(toApiError(error));
@@ -517,6 +488,7 @@ function App() {
     try {
       await softDeleteCampaign(campaignId);
       await refreshCampaigns();
+      navigate('/');
       setActionMessage("Campaign soft deleted.");
     } catch (error) {
       setActionError(toApiError(error));
@@ -541,8 +513,10 @@ function App() {
   }
 
   function handleSelect(campaignId: string) {
+    sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
     setInvalidUrlCampaignId(null);
     setSelectedCampaignId(campaignId);
+    navigate('/campaigns/' + campaignId);
   }
 
   function handleThemeToggle() {
@@ -551,20 +525,6 @@ function App() {
 
   return (
     <div className="app-shell">
-      {!isOnline && (
-        <div
-          className="form-error"
-          style={{
-            margin: '0 0 1rem 0',
-            padding: '0.75rem',
-            textAlign: 'center',
-            borderRadius: '4px',
-          }}
-        >
-          You are offline. Using cached data. Connection will be restored automatically.
-        </div>
-      )}
-
       {confettiBurst ? (
         <FundedConfetti
           key={confettiBurst.id}
@@ -633,20 +593,11 @@ function App() {
           style={{ animationDelay: "0.1s" }}
         >
           <ErrorBoundary componentName="CreatorAnalytics">
-            <Suspense
-              fallback={
-                <div
-                  className="skeleton-placeholder"
-                  style={{ height: "200px", borderRadius: "8px" }}
-                />
-              }
-            >
-              <CreatorAnalytics
-                creatorAddress={selectedCampaign.creator}
-                campaigns={campaigns}
-                isLoading={isCampaignsLoading || initialLoad}
-              />
-            </Suspense>
+            <CreatorAnalytics
+              creatorAddress={selectedCampaign.creator}
+              campaigns={campaigns}
+              isLoading={isCampaignsLoading || initialLoad}
+            />
           </ErrorBoundary>
         </section>
       )}
@@ -661,29 +612,20 @@ function App() {
           allowedAssets={appConfig?.allowedAssets ?? []}
         />
         <ErrorBoundary componentName="CampaignDetailPanel">
-          <Suspense
-            fallback={
-              <div
-                className="skeleton-placeholder"
-                style={{ height: "400px", borderRadius: "8px" }}
-              />
-            }
-          >
-            <CampaignDetailPanel
-              campaign={selectedCampaign}
-              appConfig={appConfig}
-              connectedWallet={connectedWallet}
-              isConnectingWallet={isConnectingWallet}
-              isPledgePending={pendingPledgeCampaignId === selectedCampaignId}
-              isLoading={isSelectedLoading || initialLoad}
-              onConnectWallet={handleConnectWallet}
-              onDisconnectWallet={handleDisconnectWallet}
-              onPledge={handlePledge}
-              onClaim={handleClaim}
-              onSoftDelete={handleSoftDelete}
-              onRefund={handleRefund}
-            />
-          </Suspense>
+          <CampaignDetailPanel
+            campaign={selectedCampaign}
+            appConfig={appConfig}
+            connectedWallet={connectedWallet}
+            isConnectingWallet={isConnectingWallet}
+            isPledgePending={pendingPledgeCampaignId === selectedCampaignId}
+            isLoading={isSelectedLoading || initialLoad}
+            onConnectWallet={handleConnectWallet}
+            onDisconnectWallet={handleDisconnectWallet}
+            onPledge={handlePledge}
+            onClaim={handleClaim}
+            onSoftDelete={handleSoftDelete}
+            onRefund={handleRefund}
+          />
         </ErrorBoundary>
       </section>
 
