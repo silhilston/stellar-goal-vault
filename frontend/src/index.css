@@ -1309,6 +1309,21 @@ tbody tr:hover td {
   margin-top: 20px;
 }
 
+.campaign-image-skeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.05)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+}
+
 .campaign-image {
   width: 100%;
   max-height: 280px;
