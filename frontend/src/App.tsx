@@ -738,6 +738,21 @@ function App() {
           apiError={createError}
           allowedAssets={appConfig?.allowedAssets ?? []}
         />
+        <CampaignDetailPanel
+          campaign={selectedCampaign}
+          appConfig={appConfig}
+          connectedWallet={connectedWallet}
+          isConnectingWallet={isConnectingWallet}
+          isPledgePending={pendingPledgeCampaignId === selectedCampaignId}
+          isLoading={isSelectedLoading || initialLoad}
+          onConnectWallet={handleConnectWallet}
+          onDisconnectWallet={handleDisconnectWallet}
+          onPledge={handlePledge}
+          onClaim={handleClaim}
+          onSoftDelete={handleSoftDelete}
+          onRefund={handleRefund}
+          onClose={() => setSelectedCampaignId(null)}
+        />
         <ErrorBoundary componentName="CampaignDetailPanel">
           <CampaignDetailPanel
             campaign={selectedCampaign}

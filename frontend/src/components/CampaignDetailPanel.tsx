@@ -13,6 +13,7 @@ interface CampaignDetailPanelProps {
   onClaim?: (campaign: Campaign) => Promise<void>;
   onSoftDelete?: (campaignId: string) => Promise<void>;
   onRefund?: (campaignId: string, contributor: string) => Promise<void>;
+  onClose?: () => void;
 }
 
 const FEE_ESTIMATION_ERROR_CODES = new Set([
@@ -62,6 +63,7 @@ export function CampaignDetailPanel({
   onClaim = async () => {},
   onSoftDelete = async () => {},
   onRefund = async () => {},
+  onClose,
 }: CampaignDetailPanelProps) {
   const [pledgeAmount, setPledgeAmount] = useState('25');
   const [refundContributor, setRefundContributor] = useState('');
@@ -72,7 +74,7 @@ export function CampaignDetailPanel({
 
   }, [campaign?.id, connectedWallet]);
 
-  const walletReady = Boolean(appConfig?.walletIntegrationReady ?? appConfig?.soroban?.enabled);
+
 
   if (isLoading) {
     return (

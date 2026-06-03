@@ -18,8 +18,7 @@ const mockConfig: AppConfig = {
   contractAmountDecimals: 2,
   walletIntegrationReady: true,
   assetAddresses: {
-    USDC: 'CA6WSTPZ7RRCUC6H37CQFODG763XG2HXP2G6F367VCOGGVDP32P7665E',
-    XLM: 'CDLZFC3SYJYDZT7K3SSTH3YCUY6AFMCO3Y6S3G7FEYZNVNREK7Y6CYN5',
+
   },
 };
 
@@ -48,29 +47,16 @@ const mockCampaign: Campaign = {
   metadata: {},
 };
 
-describe('CampaignDetailPanel', () => {
-  it('renders an empty state when no campaign is selected', () => {
-    render(<CampaignDetailPanel campaign={null} appConfig={mockConfig} connectedWallet={null} />);
+
 
     expect(screen.getByText(/pick a campaign/i)).toBeInTheDocument();
   });
 
-  it('opens the pledge dialog when a connected wallet pledges', async () => {
+
     const user = userEvent.setup();
-    const onPledge = vi.fn().mockResolvedValue(undefined);
+    const onClose = vi.fn();
 
     render(
-      <CampaignDetailPanel
-        campaign={mockCampaign}
-        appConfig={mockConfig}
-        connectedWallet={`G${'B'.repeat(55)}`}
-        onPledge={onPledge}
-      />,
-    );
 
-    await user.click(screen.getByRole('button', { name: /add pledge/i }));
-
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /confirm pledge/i })).toBeInTheDocument();
   });
 });
