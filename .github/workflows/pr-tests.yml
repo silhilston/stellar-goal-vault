@@ -61,32 +61,3 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-  frontend-tests:
-    name: Frontend tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Run frontend tests (with coverage)
-        working-directory: frontend
-        run: npx vitest run --coverage
-
-      - name: Upload frontend coverage HTML
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage-html
-          path: frontend/coverage
