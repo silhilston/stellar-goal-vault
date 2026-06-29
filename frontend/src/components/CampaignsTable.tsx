@@ -76,10 +76,11 @@ export function CampaignsTable({
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSort = (searchParams.get('sort') as SortOption | null) ?? 'newest';
   const urlOrder = (searchParams.get('order') as 'asc' | 'desc' | null) ?? 'desc';
+  const urlStatus = (searchParams.get('status') as StatusFilterValue | null) ?? '';
   const VALID_SORTS: SortOption[] = ['newest', 'deadline', 'percentFunded', 'totalPledged'];
   const sortBy: SortOption = VALID_SORTS.includes(urlSort) ? urlSort : 'newest';
   const [assetCode, setAssetCode] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>(urlStatus);
   const [searchQuery, setSearchQuery] = useState("");
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -96,6 +97,19 @@ export function CampaignsTable({
     onSortChange?.(newSort, newOrder);
   }
 
+  function handleStatusFilterChange(value: StatusFilterValue) {
+    setStatusFilter(value);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value === '') {
+        next.delete('status');
+      } else {
+        next.set('status', value);
+      }
+      return next;
+    }, { replace: true });
+  }
+
   function handleSearchChange(value: string) {
     setSearchQuery(value);
     if (value === '') {
@@ -108,6 +122,10 @@ export function CampaignsTable({
       onSearchChange?.(debouncedSearchQuery);
     }
   }, [debouncedSearchQuery, onSearchChange]);
+
+  useEffect(() => {
+    setStatusFilter(urlStatus);
+  }, [urlStatus]);
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
@@ -243,7 +261,7 @@ export function CampaignsTable({
                   key={filter.label}
                   type="button"
                   className={`status-filter-tab ${isActive ? "status-filter-tab-active" : ""}`}
-                  onClick={() => setStatusFilter(filter.value)}
+                  onClick={() => handleStatusFilterChange(filter.value)}
                   aria-pressed={isActive}
                   disabled={isLoading}
                 >

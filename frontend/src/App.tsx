@@ -137,10 +137,11 @@ function App() {
   const activeSortRef = useRef<string>('newest');
   const activeOrderRef = useRef<string>('desc');
   const [searchParams] = useSearchParams();
+  const campaignParam = searchParams.get('campaign');
   const [issues, setIssues] = useState<OpenIssue[]>([]);
   const [history, setHistory] = useState<CampaignEvent[]>([]);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(paramId ?? null);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(paramId ?? campaignParam ?? null);
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<Campaign | null>(
     null,
   );
@@ -176,8 +177,8 @@ function App() {
   }, [themeMode]);
 
   useEffect(() => {
-    setSelectedCampaignId(paramId ?? null);
-  }, [paramId]);
+    setSelectedCampaignId(paramId ?? campaignParam ?? null);
+  }, [paramId, campaignParam]);
 
   async function fetchCampaignPage(
     page: number,
