@@ -446,7 +446,9 @@ function App() {
       navigate('/campaigns/' + campaign.id);
       addToast(`Campaign #${campaign.id} is live and ready for pledges.`, "success");
     } catch (error) {
-      setCreateError(toApiError(error));
+      const apiError = toApiError(error);
+      setCreateError(apiError);
+      addToast(apiError.message, "error");
     }
   }
 
@@ -618,10 +620,12 @@ function App() {
       await refundCampaign(campaignId, contributor, sorobanReceipt);
       await refreshCampaigns(campaignId);
       await refreshSelectedData(campaignId);
-      setActionMessage("Contributor refunded successfully.");
+      setActionMessage(null);
+      addToast("Contributor refunded successfully.", "success");
     } catch (error) {
       setActionError(toApiError(error));
       setActionMessage(null);
+      addToast(getErrorMessage(error), "error");
     }
   }
 
